@@ -1,3 +1,13 @@
+# Virtual Environment
+venv/
+.env/
+.venv/
+venv*/
+env/
+ENV/
+env.bak/
+venv.bak/
+
 # Python
 __pycache__/
 *.py[cod]
@@ -16,30 +26,9 @@ parts/
 sdist/
 var/
 wheels/
-share/python-wheels/
 *.egg-info/
 .installed.cfg
 *.egg
-MANIFEST
-.pytest_cache/
-
-# Django
-*.log
-*.pot
-*.pyc
-__pycache__/
-local_settings.py
-db.sqlite3
-db.sqlite3-journal
-media
-
-# Virtual Environment
-.venv/
-venv/
-env/
-ENV/
-env.bak/
-venv.bak/
 
 # IDE
 .vscode/
@@ -48,107 +37,20 @@ venv.bak/
 *.swo
 *~
 .DS_Store
-*.sublime-*
 
 # Environment variables
 .env
 .env.local
-.env.prod
-.env.test
-.env.development
-
-# Project specific
-instance/
-.coverage
-.coverage.*
-htmlcov/
-.tox/
-.nox/
-.cache/
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
+.env.*.local
 
 # Logs
-logs/
 *.log
+logs/
 
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Configuration files (personal)
+# Configs (except example)
 config.yaml
-secrets.yaml
-config.json
-credentials.json
+config.yml
 
-# Jupyter Notebook
-.ipynb_checkpoints
-
-# Distribution / packaging
-.Python
-pip-log.txt
-pip-delete-this-directory.txt
-
-# Unit test / coverage reports
-htmlcov/
-.tox/
-.nox/
-.coverage
-.coverage.*
-.cache
-nosetests.xml
-coverage.xml
-*.cover
-.hypothesis/
-.pytest_cache/
-
-# Translations
-*.mo
-*.pot
-
-# Sphinx documentation
-docs/_build/
-
-# PyBuilder
-.pybuilder/
-target/
-
-# pyenv
-.python-version
-
-# pipenv
-Pipfile.lock
-
-# poetry
-poetry.lock
-
-# celery
-celerybeat-schedule
-celerybeat.pid
-
-# PyCharm
-.idea/
-.idea/*
-
-# VS Code
-.vscode/
-*.code-workspace
-
-# Operating System
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# mypy
-.mypy_cache/
-.dmypy.json
-dmypy.json
+# But keep example configs
+!config.example.yaml
+!*.example.*
