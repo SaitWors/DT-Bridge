@@ -1,0 +1,8 @@
+bridges:
+  - name: "tg_to_discord_test"
+    telegram_chat_id: -1002277816423
+    discord_channel_id: 1461019135403233400
+    directions: ["tg2d","d2tg"]
+    filters:
+      allow_media: true
+      keywords_block: []

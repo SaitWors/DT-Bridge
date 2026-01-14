@@ -1,0 +1,6 @@
+discord.py>=2.4.0
+python-telegram-bot>=20.0
+PyYAML
+python-dotenv
+aiohttp
+aiosqlite
