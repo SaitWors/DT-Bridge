@@ -23,6 +23,17 @@ logger = logging.getLogger("bridge")
 
 load_dotenv()
 
+from pathlib import Path
+print(">>> Тест загрузки .env")
+print("cwd:", os.getcwd())
+print("script folder:", Path(__file__).parent.resolve())
+res = load_dotenv()  # можно вызвать снова, вернёт True/False
+print("load_dotenv returned:", res)
+print("DISCORD_TOKEN envvar:", bool(os.getenv("DISCORD_TOKEN")))
+print("TELEGRAM_TOKEN envvar:", bool(os.getenv("TELEGRAM_TOKEN")))
+# Для безопасности не выводим сами токены полностью, только наличие
+
+
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
@@ -50,6 +61,19 @@ async def main():
     #Адаптеры
     discord_adapter = DiscordAdapter(discord_bot, mapper)
     telegram_adapter = TelegramAdapter(telegram_app, mapper, discord_adapter)
+    
+    async def _send_to_discord(channel_id, text):
+        ch = discord_bot.get_channel(channel_id)
+        if ch:
+            await ch.send(text)
+        else:
+            logger.warning(f"Такой Дискорд канал не найден: {channel_id}")
+    
+    async def _send_to_telegram(chat_id, text):
+        await telegram_app.bot.send_message(chat_id=chat_id, text=text)
+        
+    mapper._send_to_discord = _send_to_discord
+    mapper._send_to_telegram = _send_to_telegram
     
     #Принимаем сообщения
     telegram_app.add_handler(MessageHandler(filters.ALL, telegram_adapter.on_message))
