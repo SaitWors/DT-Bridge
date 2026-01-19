@@ -1,0 +1,30 @@
+[project]
+name = "dtbridge"
+version = "1.0.0"
+description = "Мост для пересылки сообщений между Discord и Telegram"
+authors = [{name = "Your Name", email = "you@example.com"}]
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "discord.py>=2.3.0",
+    "python-telegram-bot>=20.0",
+    "pyyaml>=6.0",
+    "python-dotenv>=1.0.0",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+    "aiohttp>=3.9.0",       # Для загрузки медиафайлов
+    "pillow>=10.0.0",       # Для обработки изображений (если нужно)
+    "emoji>=2.0.0",         # Для работы с эмодзи
+]
+
+[project.optional-dependencies]
+dev = [
+    "black>=23.0",
+    "flake8>=6.0",
+    "pytest>=7.0",
+    "pytest-asyncio>=0.21.0",
+]
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"

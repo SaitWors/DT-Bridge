@@ -1,107 +1,108 @@
-import asyncio
-import logging
 import os
-from pathlib import Path
-
-import yaml
-from dotenv import load_dotenv
-
-#Для дискорда
+import logging
+import asyncio
 import discord
 from discord.ext import commands
+from telegram.ext import Application, MessageHandler, filters
 
-#Для Телеграмма
-from telegram import __version__ as ptb_version
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from utils.logger_setup import setup_logging
+from core.mapper import Mapper
+from adapters.telegram_adapter import TelegramAdapter
+from adapters.discord_adapter import DiscordAdapter
 
-from bridge.discord_adapter import DiscordAdapter
-from bridge.telegram_adapter import TelegramAdapter
-from bridge.mapper import BridgeMapper
+from dotenv import load_dotenv
+import yaml
 
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger("bridge")
-
+# ЗАГРУЖАЕМ ПЕРЕМЕННЫЕ СРЕДЫ ПЕРВЫМ ДЕЛОМ
 load_dotenv()
+setup_logging(os.getenv("LOG_LEVEL", "INFO"))
+logger = logging.getLogger(__name__)
 
-from pathlib import Path
-print(">>> Тест загрузки .env")
-print("cwd:", os.getcwd())
-print("script folder:", Path(__file__).parent.resolve())
-res = load_dotenv()  # можно вызвать снова, вернёт True/False
-print("load_dotenv returned:", res)
-print("DISCORD_TOKEN envvar:", bool(os.getenv("DISCORD_TOKEN")))
-print("TELEGRAM_TOKEN envvar:", bool(os.getenv("TELEGRAM_TOKEN")))
-# Для безопасности не выводим сами токены полностью, только наличие
-
+# load config.yaml
+with open("config.yaml", "r", encoding="utf-8") as f:
+    CONFIG = yaml.safe_load(f)
 
 DISCORD_TOKEN = os.getenv("DISCORD_TOKEN")
 TELEGRAM_TOKEN = os.getenv("TELEGRAM_TOKEN")
 
-if not DISCORD_TOKEN or not TELEGRAM_TOKEN:
-    logger.error("Токены не обнаружены йоу")
-    raise SystemExit(1)
+if not DISCORD_TOKEN:
+    logger.error("DISCORD_TOKEN не найден! Укажите в config.yaml или переменной окружения")
+    exit(1)
+if not TELEGRAM_TOKEN:
+    logger.error("TELEGRAM_TOKEN не найден! Укажите в config.yaml или переменной окружения")
+    exit(1)
 
-#Заводин Конфиги
-CONFIG_PATH = Path("config.example.yaml")
-with CONFIG_PATH.open() as f:
-    config = yaml.safe_load(f)
+# --- Discord bot ---
+intents = discord.Intents.default()
+intents.message_content = True
+bot = commands.Bot(command_prefix="!", intents=intents)
+
+# --- Mapper ---
+mapper = Mapper(config=CONFIG)
+
+# --- Discord adapter (Cog) ---
+discord_adapter = DiscordAdapter(bot=bot, mapper=mapper, config=CONFIG)
+# УБРАЛИ отсюда: bot.add_cog(discord_adapter)  # <-- УДАЛИТЬ ЭТУ СТРОКУ
+
+# --- Telegram app ---
+# Добавляем прокси поддержку (из config.yaml)
+TELEGRAM_CONFIG = CONFIG.get("telegram", {})
+builder = Application.builder().token(TELEGRAM_TOKEN)
+
+# Если есть прокси в конфиге
+proxy_url = TELEGRAM_CONFIG.get("proxy_url")
+if proxy_url:
+    logger.info(f"Используем прокси для Telegram: {proxy_url}")
+    from telegram.request import HTTPXRequest
+    request = HTTPXRequest(
+        proxy=proxy_url,
+        connect_timeout=30.0,
+        read_timeout=30.0,
+        write_timeout=30.0
+    )
+    builder = builder.request(request)
+
+telegram_app = builder.build()
+
+telegram_adapter = TelegramAdapter(mapper=mapper, config=CONFIG)
+telegram_app.add_handler(MessageHandler(filters.ALL, telegram_adapter.on_message))
+
+# register clients in mapper
+mapper.register_clients(discord_bot=bot, telegram_app=telegram_app)
+
+# --- запуск: параллельно запускаем discord и telegram ---
+async def run_bots():
+    # 1. Добавляем ког для Discord (ТОЛЬКО ЗДЕСЬ!)
+    await bot.add_cog(discord_adapter)
     
-async def main():
-    #Делаем дискорд ботика
-    intents = discord.Intents.default()
-    intents.message_content = True
-    discord_bot = commands.Bot(command_prefix="!", intents=intents)
+    # 2. Инициализируем Telegram
+    await telegram_app.initialize()
     
-    #Телеграм app
-    telegram_app = ApplicationBuilder().token(TELEGRAM_TOKEN).build()
+    # 3. Запускаем Discord в фоне
+    discord_task = asyncio.create_task(bot.start(DISCORD_TOKEN))
     
-    #Конфиг mapper/bridge
-    mapper = BridgeMapper(config)
+    # 4. Запускаем Telegram
+    await telegram_app.start()
     
-    #Адаптеры
-    discord_adapter = DiscordAdapter(discord_bot, mapper)
-    telegram_adapter = TelegramAdapter(telegram_app, mapper, discord_adapter)
-    
-    async def _send_to_discord(channel_id, text):
-        ch = discord_bot.get_channel(channel_id)
-        if ch:
-            await ch.send(text)
-        else:
-            logger.warning(f"Такой Дискорд канал не найден: {channel_id}")
-    
-    async def _send_to_telegram(chat_id, text):
-        await telegram_app.bot.send_message(chat_id=chat_id, text=text)
-        
-    mapper._send_to_discord = _send_to_discord
-    mapper._send_to_telegram = _send_to_telegram
-    
-    #Принимаем сообщения
-    telegram_app.add_handler(MessageHandler(filters.ALL, telegram_adapter.on_message))
-    
-    #Обработчик Дискордика
-    @discord_bot.event
-    async def on_ready():
-        logger.info(f"Дискорд Ботик Готов. Заходим как {discord_bot.user}")
-        
-    @discord_bot.event
-    async def on_message(message):
-        await discord_adapter.on_message(message)
-        await discord_bot.process_commands(message)
-        
-    #Запуск петель
-    await asyncio.gather(telegram_app.initialize(), discord_bot.login(DISCORD_TOKEN))
-    
-    #start apps
-    telegram_task = asyncio.create_task(telegram_app.start())
-    discord_task = asyncio.create_task(discord_bot.connect())
-    
-    #Ждун
+    # 5. Для python-telegram-bot v20 используем run_polling
     try:
-        await asyncio.gather(telegram_task, discord_task)
-    except asyncio.CancelledError:
-        logger.info("Остановочка...")
-    finally:
-        await telegram_app.stop()
-        await discord_bot.close()
+        await telegram_app.updater.start_polling(
+            drop_pending_updates=True,
+            timeout=30
+        )
+    except AttributeError:
+        # Старая версия PTB
+        await telegram_app.updater.start_polling()
+    
+    logger.info("Оба бота запущены!")
+    
+    # 6. Ждем завершения
+    await discord_task
+
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(run_bots())
+    except KeyboardInterrupt:
+        logger.info("Shutting down...")
+    except Exception as e:
+        logger.error(f"Ошибка запуска: {e}")

@@ -1,8 +1,89 @@
+# DT Bridge Configuration
+# Скопируйте этот файл в config.yaml и отредактируйте
+
+# Глобальные настройки приложения
+app:
+  name: "DT Bridge"
+  update_interval_sec: 5
+  timezone: "Europe/Moscow"  # Используется для отображения времени в сообщениях
+
+# Настройки форматирования сообщений
+formatting:
+  # Стиль оформления: "minimal", "standard", "rich"
+  style: "rich"
+  
+  # Настройки отображения
+  show_author_avatar: true
+  show_timestamp: true
+  show_channel_info: true
+  time_format: "relative"  # relative, absolute, both
+  
+  # Эмодзи для различных событий
+  emojis:
+    discord_message: "💬"
+    telegram_message: "📱"
+    media_photo: "🖼️"
+    media_video: "🎬"
+    media_document: "📎"
+    link: "🔗"
+    reply: "↪️"
+
+# Настройки обработки медиа
+media:
+  # Максимальный размер файла для загрузки (в МБ)
+  max_file_size_mb: 50
+  
+  # Стратегия обработки: "download" или "link"
+  handling_strategy: "download"
+  
+  # Автоматически удалять временные файлы после отправки
+  cleanup_temp_files: true
+  
+  # Поддерживаемые форматы
+  supported_types:
+    images: ["image/png", "image/jpeg", "image/webp", "image/gif"]
+    videos: ["video/mp4", "video/quicktime", "video/webm"]
+    audio: ["audio/mpeg", "audio/ogg", "audio/wav"]
+    documents: ["application/pdf", "text/plain", "application/zip"]
+
+# Настройки мостов (самая важная часть!)
 bridges:
-  - name: "tg_to_discord_test"
-    telegram_chat_id: -1002277816423
-    discord_channel_id: 1461019135403233400
-    directions: ["tg2d","d2tg"]
-    filters:
-      allow_media: true
-      keywords_block: []
+  # Каждый мост связывает Discord канал с Telegram чатом
+  - name: "Мой основной мост"  # Произвольное название для удобства
+    enabled: true
+    
+    # Discord
+    discord:
+      channel_id: 1461019135403233400  # ID Discord канала
+      server_name: "Мой сервер"       # Для информационных целей
+      channel_name: "general"         # Для информационных целей
+      
+      # Фильтры для Discord (что НЕ пересылать)
+      filters:
+        ignore_bots: true
+        ignore_commands: true         # Игнорировать сообщения с префиксом !
+        max_length: 2000              # Максимальная длина сообщения
+        
+    # Telegram
+    telegram:
+      chat_id: -1002277816423         # ID Telegram чата (отрицательный для групп)
+      chat_name: "Моя группа"         # Для информационных целей
+      
+      # Фильтры для Telegram
+      filters:
+        ignore_commands: true         # Игнорировать команды с /
+        forward_from_groups: false    # Пересылать ли сообщения из других групп?
+
+# Настройки логирования
+logging:
+  level: "INFO"  # DEBUG, INFO, WARNING, ERROR
+  file: "logs/bridge.log"
+  max_size_mb: 10
+  backup_count: 5
+
+# Расширенные функции (можно включить позже)
+features:
+  link_previews: true          # Показывать предпросмотр ссылок
+  message_threads: true        # Поддержка тредов (Discord) и топиков (Telegram)
+  user_mentions: true          # Конвертировать упоминания пользователей
+  auto_translate: false        # Автоматический перевод (требует API ключ)
